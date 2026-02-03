@@ -1,0 +1,16 @@
+name,department,salary,hire_date,city,performance_score
+Alice Johnson,Engineering,95000,2021-03-15,New York,4.5
+Bob Smith,Marketing,72000,2020-07-01,Chicago,3.8
+Carol Williams,Engineering,102000,2019-11-20,San Francisco,4.9
+David Brown,Sales,68000,2022-01-10,New York,3.5
+Eva Martinez,Marketing,75000,2021-06-22,Chicago,4.1
+Frank Lee,Engineering,110000,2018-09-05,San Francisco,4.7
+Grace Kim,Sales,71000,2023-02-14,New York,3.9
+Henry Davis,HR,65000,2020-04-18,Chicago,4.0
+Ivy Chen,Engineering,98000,2021-08-30,San Francisco,4.3
+Jack Wilson,Sales,73000,2022-05-12,New York,3.6
+Kate Taylor,Marketing,78000,2019-12-01,Chicago,4.2
+Leo Anderson,HR,62000,2023-07-20,San Francisco,3.7
+Maria Garcia,Engineering,105000,2020-01-15,New York,4.8
+Nathan Park,Sales,69000,2022-09-08,Chicago,3.4
+Olivia Thomas,Marketing,76000,2021-11-25,San Francisco,4.0
