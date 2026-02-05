@@ -256,7 +256,32 @@ with st.sidebar:
     # BigQuery Flow
     # =========================================================================
     elif st.session_state.data_source == "bigquery":
-        st.subheader("☁️ Google BigQuery")
+        # --- 1. Document context (optional) - same as CSV ---
+        st.subheader("1. Documento de contexto")
+        st.caption("Sube un .docx que describa los campos de tu tabla (opcional)")
+        doc_file_bq = st.file_uploader(
+            "Documento de contexto",
+            type=["docx"],
+            key="doc_uploader_bq",
+            label_visibility="collapsed",
+        )
+
+        if doc_file_bq is not None and not st.session_state.doc_context:
+            with st.spinner("Leyendo documento..."):
+                text = extract_docx_text(doc_file_bq.read())
+                st.session_state.doc_context = text
+
+        if st.session_state.doc_context:
+            st.success(f"Contexto cargado ({len(st.session_state.doc_context):,} chars)")
+            with st.expander("Ver contexto", expanded=False):
+                st.text(st.session_state.doc_context[:2000] + (
+                    "\n..." if len(st.session_state.doc_context) > 2000 else ""
+                ))
+
+        st.divider()
+
+        # --- 2. BigQuery connection ---
+        st.subheader("2. Conexión BigQuery")
 
         # Check for credentials
         credentials = get_bigquery_credentials()
@@ -323,13 +348,24 @@ with st.sidebar:
 
                         # Initialize system
                         system = DataQuerySystem(backend_type="bigquery")
+                        # If DOCX context available, set it now
+                        if st.session_state.doc_context:
+                            system.set_context(st.session_state.doc_context)
                         schema = system.connect_bigquery()
 
                         st.session_state.system = system
                         st.session_state.schema_description = schema
                         st.session_state.csv_loaded = True  # Reuse this flag
-                        st.session_state.context_ready = True
                         st.session_state.messages = []
+
+                        # If DOCX was provided, context is ready. Otherwise need manual descriptions.
+                        if st.session_state.doc_context:
+                            st.session_state.context_ready = True
+                        else:
+                            st.session_state.context_ready = False
+                            # Get column summary for manual descriptions
+                            st.session_state.column_info = backend.get_column_summary()
+                            st.session_state.col_descriptions = {}
 
                         st.success("Conectado a BigQuery!")
                         st.rerun()
@@ -380,12 +416,13 @@ if not st.session_state.csv_loaded:
     else:
         st.info(
             "**Para comenzar:**\n"
-            "1. Ingresa tu Project ID y Dataset ID de BigQuery\n"
-            "2. Haz clic en *Conectar a BigQuery*"
+            "1. (Opcional) Sube un documento .docx con la descripción de los campos\n"
+            "2. Ingresa tu Project ID y Dataset ID de BigQuery\n"
+            "3. Haz clic en *Conectar a BigQuery*"
         )
 
-# --- State: CSV loaded but no context (no DOCX) — show column description form ---
-elif st.session_state.data_source == "csv" and not st.session_state.context_ready:
+# --- State: Data loaded but no context (no DOCX) — show column description form ---
+elif not st.session_state.context_ready:
     cols = st.session_state.column_info
 
     st.warning(
