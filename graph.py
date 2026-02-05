@@ -119,14 +119,30 @@ def _detect_conversation_audit(raw_schema: str) -> bool:
 
 def query_agent(state: AgentState) -> dict:
     from langchain_core.messages import SystemMessage
-    from db_manager import format_schema_for_llm
+    from backend_registry import BackendRegistry
 
-    # Always inject the real database schema (column names, types, samples)
-    raw_schema = format_schema_for_llm()
+    # Get schema from the active backend (SQLite or BigQuery)
+    backend = BackendRegistry.get_backend()
+    if backend:
+        raw_schema = backend.format_schema_for_llm()
+    else:
+        raw_schema = "No data source configured."
+
     schema_desc = state.get("schema_description", "")
     custom_ctx = state.get("custom_context", "")
+    backend_type = state.get("backend_type", "sqlite")
 
-    schema_context = QUERY_PROMPT.content
+    # Adjust prompt for BigQuery vs SQLite
+    if backend_type == "bigquery":
+        schema_context = QUERY_PROMPT.content.replace(
+            "SQLite database",
+            "BigQuery database"
+        ).replace(
+            "SQLite SELECT",
+            "BigQuery SELECT"
+        )
+    else:
+        schema_context = QUERY_PROMPT.content
 
     # Inject user-provided context (from DOCX or manual column descriptions)
     if custom_ctx:
@@ -205,7 +221,8 @@ def build_query_graph():
 class DataQuerySystem:
     """Orchestrates the full pipeline: ingest file, map schema, answer questions."""
 
-    def __init__(self):
+    def __init__(self, backend_type: str = "sqlite"):
+        self.backend_type = backend_type
         self.ingestion_graph = build_ingestion_graph()
         self.query_graph = build_query_graph()
         self.schema_description = ""
@@ -229,6 +246,7 @@ class DataQuerySystem:
             "schema_description": "",
             "current_agent": "ingestion",
             "custom_context": self.custom_context,
+            "backend_type": self.backend_type,
         }
 
         result = self.ingestion_graph.invoke(state)
@@ -248,6 +266,27 @@ class DataQuerySystem:
 
         return self.schema_description
 
+    def connect_bigquery(self) -> str:
+        """
+        For BigQuery: skip ingestion, just get schema from the connected backend.
+        Returns the schema description.
+        """
+        from backend_registry import BackendRegistry
+
+        self.backend_type = "bigquery"
+        backend = BackendRegistry.get_backend()
+
+        if backend and backend.is_connected():
+            self.schema_description = backend.format_schema_for_llm()
+            # Get first table name if any
+            tables = backend.get_tables_list()
+            if tables:
+                self.table_name = tables[0]["name"]
+        else:
+            self.schema_description = "BigQuery not connected."
+
+        return self.schema_description
+
     def ask(self, question: str, verbose: bool = False) -> str:
         """Ask a natural-language question about the loaded data."""
         self.messages_history.append(HumanMessage(content=question))
@@ -260,6 +299,7 @@ class DataQuerySystem:
             "schema_description": self.schema_description,
             "current_agent": "query",
             "custom_context": self.custom_context,
+            "backend_type": self.backend_type,
         }
 
         result = self.query_graph.invoke(state)

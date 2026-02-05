@@ -4,3 +4,7 @@ databases/
 __pycache__/
 *.pyc
 *.db
+# GCP credentials
+client_secrets.json
+*-service-account.json
+*_credentials.json

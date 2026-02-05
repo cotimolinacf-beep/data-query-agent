@@ -11,12 +11,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.tools import tool
 from langgraph.graph.message import add_messages
 
-from db_manager import (
-    load_file_to_sqlite,
-    format_schema_for_llm,
-    get_schema_info,
-    run_query,
-)
+from db_manager import load_file_to_sqlite
+from backend_registry import BackendRegistry
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +26,7 @@ class AgentState(TypedDict):
     schema_description: str  # populated after schema mapping
     current_agent: str       # tracks which agent is active
     custom_context: str      # user-provided document context (e.g. from DOCX)
+    backend_type: str        # "sqlite" or "bigquery"
 
 
 # ---------------------------------------------------------------------------
@@ -56,8 +53,11 @@ def ingest_file(file_path: str, table_name: Optional[str] = None) -> str:
 
 @tool
 def get_database_schema() -> str:
-    """Return the full schema of the current SQLite database including sample values."""
-    return format_schema_for_llm()
+    """Return the full schema of the current database including sample values."""
+    backend = BackendRegistry.get_backend()
+    if backend is None:
+        return "No data source configured. Please load a file or connect to BigQuery."
+    return backend.format_schema_for_llm()
 
 
 @tool
@@ -70,7 +70,11 @@ def execute_sql(query: str) -> str:
     if any(upper.startswith(kw) for kw in ("INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE")):
         return json.dumps({"error": "Only SELECT queries are allowed."})
 
-    result = run_query(query)
+    backend = BackendRegistry.get_backend()
+    if backend is None:
+        return json.dumps({"error": "No data source configured. Please load a file or connect to BigQuery."})
+
+    result = backend.run_query(query)
     if result["success"]:
         if "columns" in result:
             rows_preview = result["rows"][:50]  # cap preview
@@ -86,9 +90,10 @@ def execute_sql(query: str) -> str:
 @tool
 def list_tables() -> str:
     """List all tables in the database with their row counts."""
-    schema = get_schema_info()
-    tables = [{"name": t["table_name"], "rows": t["row_count"]} for t in schema]
-    return json.dumps(tables)
+    backend = BackendRegistry.get_backend()
+    if backend is None:
+        return json.dumps([])
+    return json.dumps(backend.get_tables_list())
 
 
 # ---------------------------------------------------------------------------
