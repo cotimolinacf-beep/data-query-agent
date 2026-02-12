@@ -222,6 +222,23 @@ class BigQueryBackend(Backend):
         except Exception:
             return False
 
+    def test_connection(self) -> dict:
+        """Test connection and return detailed error info if it fails."""
+        try:
+            # Try to get the specific table
+            table = self.client.get_table(self.full_table_id)
+            return {
+                "success": True,
+                "table_name": table.table_id,
+                "row_count": table.num_rows or 0,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            }
+
     @property
     def backend_type(self) -> str:
         return "bigquery"

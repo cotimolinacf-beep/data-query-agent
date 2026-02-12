@@ -349,7 +349,10 @@ with st.sidebar:
                         table_id=table_id,
                     )
 
-                    if backend.is_connected():
+                    # Use test_connection for detailed error info
+                    conn_result = backend.test_connection()
+
+                    if conn_result["success"]:
                         st.session_state.bq_project = project_id
                         st.session_state.bq_dataset = dataset_id
                         st.session_state.bq_table = table_id
@@ -379,7 +382,9 @@ with st.sidebar:
                         st.success("Conectado a BigQuery!")
                         st.rerun()
                     else:
-                        st.error("No se pudo conectar. Verifica proyecto y dataset.")
+                        error_msg = conn_result.get("error", "Error desconocido")
+                        error_type = conn_result.get("error_type", "")
+                        st.error(f"Error de conexión ({error_type}): {error_msg}")
                 except Exception as e:
                     st.error(f"Error: {e}")
 
