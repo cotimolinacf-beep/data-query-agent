@@ -70,7 +70,17 @@ class BigQueryBackend(Backend):
                 "row_count": len(rows),
             }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            # Add helpful context if it's a common error
+            if "Not found" in error_msg:
+                error_msg += f"\n\nHint: Make sure you're using the full table reference: `{self.full_table_id}`"
+            elif "Access Denied" in error_msg or "permission" in error_msg.lower():
+                error_msg += "\n\nHint: The service account may not have BigQuery Job User permissions."
+            return {
+                "success": False,
+                "error": error_msg,
+                "query": query,  # Include the query for debugging
+            }
 
     def get_schema_info(self) -> list[dict]:
         """Get schema for the specific table."""
