@@ -50,6 +50,7 @@ class BackendRegistry:
         credentials: "Credentials",
         project_id: str,
         dataset_id: str,
+        table_id: str,
     ) -> "Backend":
         """Initialize and set BigQuery as the active backend."""
         from backends.bigquery_backend import BigQueryBackend
@@ -57,6 +58,7 @@ class BackendRegistry:
             credentials=credentials,
             project_id=project_id,
             dataset_id=dataset_id,
+            table_id=table_id,
         )
         return cls._backend
 

@@ -78,7 +78,7 @@ def reset_to_source_selection():
     BackendRegistry.clear()
     for key in ["data_source", "system", "messages", "schema_description",
                 "csv_loaded", "context_ready", "column_info", "col_descriptions",
-                "doc_context", "bq_connected", "bq_project", "bq_dataset"]:
+                "doc_context", "bq_connected", "bq_project", "bq_dataset", "bq_table"]:
         if key in st.session_state:
             del st.session_state[key]
 
@@ -109,6 +109,7 @@ defaults = {
     "bq_connected": False,
     "bq_project": "",
     "bq_dataset": "",
+    "bq_table": "",
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -312,7 +313,7 @@ with st.sidebar:
 
         st.success("Credenciales de GCP encontradas")
 
-        # Project and Dataset inputs
+        # Project, Dataset and Table inputs
         project_id = st.text_input(
             "Project ID",
             value=st.session_state.bq_project,
@@ -325,25 +326,33 @@ with st.sidebar:
             placeholder="mi_dataset"
         )
 
+        table_id = st.text_input(
+            "Table ID",
+            value=st.session_state.bq_table,
+            placeholder="mi_tabla"
+        )
+
         connect_btn = st.button(
             "Conectar a BigQuery",
             type="primary",
-            disabled=not project_id or not dataset_id,
+            disabled=not project_id or not dataset_id or not table_id,
             use_container_width=True,
         )
 
-        if connect_btn and project_id and dataset_id:
+        if connect_btn and project_id and dataset_id and table_id:
             with st.spinner("Conectando a BigQuery..."):
                 try:
                     backend = BackendRegistry.set_bigquery_backend(
                         credentials=credentials,
                         project_id=project_id,
                         dataset_id=dataset_id,
+                        table_id=table_id,
                     )
 
                     if backend.is_connected():
                         st.session_state.bq_project = project_id
                         st.session_state.bq_dataset = dataset_id
+                        st.session_state.bq_table = table_id
                         st.session_state.bq_connected = True
 
                         # Initialize system
